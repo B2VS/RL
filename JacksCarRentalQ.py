@@ -75,48 +75,43 @@ class Environment:
         return policy
 
     def evaluatePolicy(self, policy, gamma = 0.5, theta = 0.001): #iterative policy evaluation (returns V)
-        V = [0 for _ in range(self.states)]
+        Q = [{} for _ in range(self.states)]
+        for state in range(self.states):
+            for action in self.probs[state]:
+                Q[state][action] = 0 
         delta = 1
         while (delta > theta):
             #print(V)
             delta = 0
             for s in range(self.states):
-                if len(self.probs[s]) == 0:
-                    continue
-                v = V[s]
-                t1 = 0
                 for a in self.probs[s]:
-                    t2 = 0
+                    q = Q[s][a]
+                    t1 = 0
                     for sd in self.probs[s][a]:
-                        t2 += self.probs[s][a][sd] * (self.rewards[s][a][sd] + gamma * V[sd])
-                    t1 += policy[s][a] * t2
-                V[s] = t1
-                delta = max(delta, abs(v - V[s]))
-        return V
+                        t2 = 0
+                        for ad in self.probs[sd]:
+                            t2 += policy[sd][ad] * Q[sd][ad]
+                        t1 += env.probs[s][a][sd] * (env.rewards[s][a][sd] + gamma * t2)
+                    Q[s][a] = t1
+                    delta = max(delta, abs(q - Q[s][a]))
+        return Q
 
-    def improvePolicy(self, policy, V, gamma = 0.5): #policy improvement
+    def improvePolicy(self, policy, Q, gamma = 0.5): #policy improvement
         stable = True
         for s in range(self.states):
             if len(self.probs[s]) == 0:
                 continue
-            b = max(policy[s], key=policy[s].get)
-            val = 0
-            for a in self.probs[s]:
-                temp = 0
-                for sd in self.probs[s][a]:
-                    temp += self.probs[s][a][sd] * (self.rewards[s][a][sd] + gamma * V[sd])
-                if a == next(iter(self.probs[s])) or temp > val:
-                    policy[s][max(policy[s], key=policy[s].get)] = 0
-                    policy[s][a] = 1
-                    val = temp
-            if b != max(policy[s], key=policy[s].get):
+            b = max(policy[s], key = policy[s].get)
+            policy[s][max(policy[s], key = policy[s].get)] = 0
+            policy[s][max(Q[s], key = Q[s].get)] = 1
+            if b != max(policy[s], key = policy[s].get):
                 stable = False
         return policy, stable
                 
 #make environment
 
     
-sx = 11
+sx = 21
 
 def printx(policy):
     for i in range(sx - 1, -1, -1):
@@ -176,6 +171,8 @@ for state in range(sx ** 2):
 print(env.validate())
 
 policy = env.fixedPolicy(5)
+#print(env.evaluatePolicy(policy, 0.5))
+
 stable = False
 printx(policy)
 print()
